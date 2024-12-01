@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import './Styles/Main.css';
-import wheelImage from './assets/ornaments.jpg'
+import './Styles/Main.css'; 
 import emailjs from 'emailjs-com';
-import './Styles/App.css';
 
 interface User {
   name: string;
   email: string;
   message: string;
+  selected?: string; // Added selected field to store who the user selected
+  hasSpun?: boolean; // Added hasSpun field to track if the user has spun
 }
 
 const App: React.FC = () => {
@@ -16,51 +16,39 @@ const App: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [rotationAngle, setRotationAngle] = useState(0);
+  const [spinner, setSpinner] = useState<string | null>(null); // The person who is spinning
+  const [selectedUser, setSelectedUser] = useState<string | null>(null); // The selected person
+  const [gameOver, setGameOver] = useState(false);
 
- 
-
- 
-// Initialize EmailJS with your user ID
-
-
-   // Access EmailJS service details from .env
-  //  const userName = process.env.REACT_APP_EMAILJS_USER_ID;
-  //  const serviceId = process.env.REACT_APP_EMAILJS_SERVICE_ID;
-  //  const templateId = process.env.REACT_APP_EMAILJS_TEMPLATE_ID;
-
-const sendEmail = (user: User) => {
-  const templateParams = {
-    to_name: user.name,
-    to_email: user.email,
-    message: `Congratulations ${user.name}! You have been selected as the Secret Santa!`,
-  };
-  console.log('user name:', user.name);
-  console.log('user email:', user.email);
-
+  // Initialize EmailJS with your user ID
   emailjs.init(process.env.REACT_APP_EMAILJS_USER_ID!);
 
-  emailjs.send(
-    process.env.REACT_APP_EMAILJS_SERVICE_ID!,
-    process.env.REACT_APP_EMAILJS_TEMPLATE_ID!,
-    templateParams
-  )
-    .then((response) => {
-      console.log('Email sent successfully!', response.status, response.text);
-    })
-    .catch((error) => {
-      console.error('Failed to send email.', error);
-    });
-    console.log('EmailJS User ID:', process.env.REACT_APP_EMAILJS_USER_ID);
-console.log('EmailJS Service ID:', process.env.REACT_APP_EMAILJS_SERVICE_ID);
-console.log('EmailJS Template ID:', process.env.REACT_APP_EMAILJS_TEMPLATE_ID);
+  const sendEmail = (user: User, selectedName: string) => {
+    const templateParams = {
+      to_name: user.name,
+      to_email: user.email,
+      message: `Congratulations ${user.name}! You have been selected as the Secret Santa for ${selectedName}! They have provided the following gift ideas: ${user.message}`,
+    };
+    console.log('user name:', user.name);
+    console.log('user email:', user.email);
 
-};
+    emailjs
+      .send(
+        process.env.REACT_APP_EMAILJS_SERVICE_ID!,
+        process.env.REACT_APP_EMAILJS_TEMPLATE_ID!,
+        templateParams
+      )
+      .then((response) => {
+        console.log('Email sent successfully!', response.status, response.text);
+      })
+      .catch((error) => {
+        console.error('Failed to send email.', error);
+      });
+  };
 
-
-  // Handle form submission to add a new user
+  // Add user to the list
   const handleSubmit = () => {
     if (name && email && message) {
       setUsers([...users, { name, email, message }]);
@@ -70,176 +58,188 @@ console.log('EmailJS Template ID:', process.env.REACT_APP_EMAILJS_TEMPLATE_ID);
     }
   };
 
-  // Handle spinning logic to exclude the current spinner
-  const handleSpin = () => {
-    if (users.length < 2) return; // Need at least 2 users to spin (so one can be excluded)
-
-    setSpinning(true);
-
-    // Randomize the spin duration and direction
-    const randomRotation = Math.floor(Math.random() * 360) + 3600; // At least 3600 degrees (10 full spins)
-    const randomDelay = Math.random() * 2 + 3; // Delay in seconds for the spin duration (3 to 5 seconds)
-
-    // Set the rotation angle and duration for the animation
-    setRotationAngle(rotationAngle + randomRotation);
-
-    setTimeout(() => {
-      const randomUser = users[Math.floor(Math.random() * users.length)];
-      setSelectedUser(randomUser.name);
-      setSpinning(false);
-    }, randomDelay * 1000); // Delay the selection for the same duration as the spinning animation
+  // Select a spinner
+  const handleSpinnerSelection = (userName: string) => {
+    setSpinner(userName);
   };
 
+  // Handle spin logic
+ // Handle spin logic
+const handleSpin = () => {
+  if (!spinner) return; // No spinner selected
+  const spinnerUser = users.find(user => user.name === spinner);
+  if (!spinnerUser || spinnerUser.hasSpun) return; // Check if the spinner has already spun
 
+  setSpinning(true);
 
-// Modify handleConfirm to send an email
-const handleConfirm = () => {
-  if (selectedUser) {
-    const user = users.find(user => user.name === selectedUser);
-    if (user) {
-      sendEmail(user);
-    }
-    setUsers(users.filter(user => user.name !== selectedUser));
-    setSelectedUser(null);
-  }
+  // Filter out the spinner (they can't pick themselves)
+  const otherUsers = users.filter(user => user.name !== spinner);
+  if (otherUsers.length === 0) return;
+
+  // Randomly select someone else
+  const randomUser = otherUsers[Math.floor(Math.random() * otherUsers.length)];
+  setSelectedUser(randomUser.name);
+
+  // Rotate the wheel
+  const randomRotation = Math.floor(Math.random() * 360) + 3600; // Full rotations
+  setRotationAngle(rotationAngle + randomRotation);
+
+  setTimeout(() => {
+    setSpinning(false);
+    setUsers(users.map(user =>
+      user.name === spinner ? { ...user, selected: randomUser.name, hasSpun: true } : user
+    ));
+  }, 5000); // Simulate the spinning duration
 };
+  // Confirm the selection and remove the person from the list
+  const handleConfirm = () => {
+    if (selectedUser) {
+      const selected = users.find(user => user.name === selectedUser);
+      if (selected) {
+        sendEmail(selected, spinner!); // Send email to the selected person
+        setUsers(users.filter(user => user.name !== spinner)); // Remove the spinner from the list
+        setSpinner(null);
+        setSelectedUser(null);
+      }
+    }
+  };
 
+  // Send a master email with all the selections once the game is over
+  const handleMasterEmail = () => {
+    const selections = users.map(user => ({
+      name: user.name,
+      selected: user.selected,
+    }));
+    const templateParams = {
+      to_name: 'Michelle', // Or some other name
+      to_email: 'mvoidets@yahoo.com', // Admin's email
+      message: JSON.stringify(selections, null, 2), // Format the selections in the email
+    };
+
+    emailjs.send(
+      process.env.REACT_APP_EMAILJS_SERVICE_ID!,
+      process.env.REACT_APP_EMAILJS_TEMPLATE_ID!,
+      templateParams
+    )
+    .then((response) => {
+      console.log('Master email sent successfully!', response.status, response.text);
+    })
+    .catch((error) => {
+      console.error('Failed to send master email.', error);
+    });
+  };
+
+  // Check if the game is over (i.e., all users have selected someone)
+  const isGameOver = () => users.every(user => user.selected);
+
+  console.log('users:', users);
+  console.log('spinner:', spinner);
+  console.log('selectedUser:', selectedUser);
 
 
   return (
-    <div className='form-container'>
-    {/* The video background */}
-    <div className="video-background">
-      <video autoPlay loop muted>
-        <source src="/santa_list.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+    <div className="form-container">
+        <div className="video-background">
+        <video autoPlay loop muted>
+          <source src="/santa_list.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
       </div>
-      <h1 className="mb-4 text-center ">Holiday Fun</h1>
-<div className="container mt-5">
- 
-  <div className="row">
-    {/* Form for adding users (Left column) */}
-    <div className="col-md-3">
-      <h3 className="text-center mb-4">Add User</h3>
-      <div className="mb-3">
-        <label htmlFor="name" className="form-label">Name</label>
-        <input
-          type="text"
-          className="form-control"
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-      <div className="mb-3">
-        <label htmlFor="email" className="form-label">Email</label>
-        <input
-          type="email"
-          className="form-control"
-          id="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-      <div className="mb-3">
-        <label htmlFor="message" className="form-label">Gift Ideas</label>
-        <textarea
-          className="form-control"
-          id="message"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-      </div>
-      <button type="button" className="btn btn-primary" onClick={handleSubmit}>
-        Add User
-      </button>
-    </div>
+      <h1 className="mb-4 text-center">Secret Santa Game</h1>
+      <div className="container mt-5">
+        <div className="row">
+          {/* Form for adding users */}
+          <div className="col-md-4">
+            <h3 className="text-center mb-4">Add User</h3>
+            <div className="mb-3">
+              <label htmlFor="name" className="form-label">Name</label>
+              <input
+                type="text"
+                className="form-control"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="email" className="form-label">Email</label>
+              <input
+                type="email"
+                className="form-control"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="message" className="form-label">Gift Ideas</label>
+              <textarea
+                className="form-control"
+                id="message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+            </div>
+            <button type="button" className="btn btn-primary" onClick={handleSubmit}>
+              Add User
+            </button>
+          </div>
 
-    {/* List of users (Middle column) */}
-    <div className="col-md-3">
-      <h2 className="text-center mb-4">Secret Santa's</h2>
-      <ul className="list-group mb-4">
-        {users.map((user, index) => (
-          <li
-            className="list-group-item d-flex justify-content-between align-items-center"
-            key={index}
-          >
-            {user.name}
-          </li>
-        ))}
-      </ul>
-    </div>
+          {/* Spinner selection */}
+          <div className="col-md-4">
+            <h2 className="text-center mb-4">Select Spinner</h2>
+            {users.map((user) => (
+              <div key={user.name}>
+                <input
+                  type="radio"
+                  id={user.name}
+                  name="spinner"
+                  checked={spinner === user.name}
+                  onChange={() => handleSpinnerSelection(user.name)}
+                />
+                <label htmlFor={user.name}>
+                  {user.name} {user.hasSpun && "(Already Spun)"}
+                </label>
+              </div>
+            ))}
+          </div>
 
-    {/* Prize Wheel (Right column) */}
-    <div className="col-md-6 center-text">
-      <h3 className="text-center mb-4">{spinning ? 'Spinning...' : 'Spin to Select your person!'}</h3>
-      <div
-  className="spinner-container mx-auto"
-  style={{
-    width: '400px',
-    height: '400px',
-    borderRadius: '50%',
-    position: 'relative',
-    display: 'inline-block',
-    border: '5px solid black',
-    overflow: 'hidden',
-    transform: `rotate(${rotationAngle}deg)`,
-    transition: 'transform 3s ease-out',
-    background: `url(${wheelImage}) center center/cover no-repeat`,
-  }}
->
-  {users.map((user, index) => {
-    const angle = (360 / users.length) * index; // Calculate the angle for each user (even distribution)
-    const radius = 200; // Adjust this value based on the radius of your wheel
-    const transformStyle = `rotate(${angle}deg) translateY(-${radius}px) rotate(-${angle}deg)`; // Position each user at a calculated angle
-
-    return (
-      <div
-        key={index}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transformOrigin: '50% 50%', // Rotate around the center
-          transform: transformStyle, // Position the user names around the circle
-          textAlign: 'center',
-          color: 'red', // Change the text color to stand out
-          fontWeight: 'bold',
-          fontSize: '16px', // Adjust the font size
-        }}
-      >
-        {user.name}
-      </div>
-    );
-  })}
-</div>
-      <div className="display-5 mt-3  center-text" style={{ minHeight: '50px', fontWeight: 'bold' }}>
-        {selectedUser ? selectedUser : 'No User Selected'}
-      </div>
-      <div className="mt-4">
-        <button
-          className="btn btn-danger"
-          onClick={handleSpin}
-          disabled={spinning || users.length < 2}
-        >
-          Spin the Wheel
-        </button>
-      </div>
-      {selectedUser && (
-        <div className="mt-4">
-          <button className="btn btn-success" onClick={handleConfirm}>
-            Confirm Selection
-          </button>
+          {/* Spin the wheel */}
+          <div className="col-md-4">
+            <h3 className="text-center mb-4">{spinning ? 'Spinning...' : 'Spin the Wheel!'}</h3>
+            <div
+              className="spinner-container mx-auto"
+              style={{
+                transform: `rotate(${rotationAngle}deg)`,
+                transition: 'transform 5s ease-out',
+              }}
+            >
+              {/* Add wheel graphics and user names here */}
+            </div>
+            <div className="mt-3">
+              <button className="btn btn-danger" onClick={handleSpin} disabled={spinning || !spinner || users.find(user => user.name === spinner)?.hasSpun}>
+                Spin the Wheel
+              </button>
+            </div>
+            {selectedUser && (
+              <div className="mt-3">
+                <h5>Selected: {selectedUser}</h5>
+                <button className="btn btn-success" onClick={handleConfirm}>
+                  Confirm Selection
+                </button>
+              </div>
+            )}
+            {isGameOver() && !gameOver && (
+              <div className="mt-3">
+                <button className="btn btn-warning" onClick={handleMasterEmail}>
+                  Send Master Email
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
-  </div>
-</div>
-    </div>
-    
   );
 };
-
-
 export default App;
