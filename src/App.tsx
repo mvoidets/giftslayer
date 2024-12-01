@@ -110,9 +110,10 @@ const handleSpin = () => {
       name: user.name,
       selected: user.selected,
     }));
+    const adminEmail = prompt("Please enter the admin's email:");
     const templateParams = {
       to_name: 'Admin', // Or some other name
-      to_email: 'user@yahoo.com', // Admin's email
+      to_email: adminEmail || '', // Admin's email
       message: JSON.stringify(selections, null, 2), // Format the selections in the email
     };
 
