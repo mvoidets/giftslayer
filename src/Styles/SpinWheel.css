@@ -1,0 +1,38 @@
+.wheel-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .wheel {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    position: relative;
+    border: 5px solid black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
+  
+  .wheel-segment {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    background-color: white;
+    top: 0;
+    left: 50%;
+    transform-origin: 100% 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .wheel-segment-inner {
+    transform: rotate(90deg);
+    font-size: 14px;
+    font-weight: bold;
+  }
+  

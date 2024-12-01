@@ -1,0 +1,87 @@
+/* Ensure the video fills the entire page */
+.video-background {
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100vw;  
+    height: 100vh; 
+    z-index: -1; 
+    /* opacity: 0.9; */
+  }
+  
+  /* Ensures the video stretches and fills the entire screen */
+  .video-background video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensures the video covers the entire viewport */
+  }
+  
+  /* Center the form */
+  .form-container {
+    position: absolute;
+    z-index: 1; /* Keeps the form on top of the video */
+    background-color: rgba(0, 0, 0, 0.6); /* Optional: Adds a translucent background to the form */
+    padding: 2rem;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 1000px; /* Limiting the width of the form */
+    color: red; /* Text color inside the form */
+  }
+  
+  /* Form and button styling */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 5px;
+  }
+  
+  .btn {
+    padding: 0.8rem;
+    width: 100%;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background-color: #007bff;
+    color: white;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Ensure the input field and the eye icon are correctly positioned */
+  .password-wrapper {
+    position: relative;
+  }
+  
+  .eye-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: black;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
