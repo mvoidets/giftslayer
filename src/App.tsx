@@ -23,7 +23,9 @@ const App: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<string | null>(null); // The selected person
 
   // Initialize EmailJS with your user ID
-  emailjs.init(process.env.REACT_APP_EMAILJS_USER_ID!);
+  useEffect(() => {
+    emailjs.init(process.env.REACT_APP_EMAILJS_USER_ID!);
+  }, []);
 
   const sendEmail = (spinnerUser: User, selectedName: string) => {
     const selectedUser = users.find(user => user.name === selectedName);
@@ -32,6 +34,9 @@ const App: React.FC = () => {
       to_email: spinnerUser.email, // Send to the spinner's email
       message: `Congratulations ${spinnerUser.name}! You have been selected as the Secret Santa for ${selectedName}. The selected user has provided the following gift ideas: ${selectedUser?.message}`,
     };
+console.log("Spinner User", spinnerUser);  
+console.log("spinnerUser.email", spinnerUser.email);
+console.log("templateParams", templateParams);
 
     emailjs
       .send(
@@ -46,7 +51,6 @@ const App: React.FC = () => {
         console.error('Failed to send email.', error);
       });
   };
-
   const handleSubmit = () => {
     if (name && email && message) {
       setUsers([...users, { name, email, message }]);
