@@ -34,9 +34,6 @@ const App: React.FC = () => {
       to_email: spinnerUser.email, // Send to the spinner's email
       message: `Congratulations ${spinnerUser.name}! You have been selected as the Secret Santa for ${selectedName}. The selected user has provided the following gift ideas: ${selectedUser?.message}`,
     };
-console.log("Spinner User", spinnerUser);  
-console.log("spinnerUser.email", spinnerUser.email);
-console.log("templateParams", templateParams);
 
     emailjs
       .send(
@@ -209,7 +206,7 @@ console.log("templateParams", templateParams);
 
           {/* Spinner selection */}
           <div className="col-md-3">
-            <h3 className="text-center mb-4">Select Spinner</h3>
+            <h3 className="text-center mb-4">Select who is the spinner</h3>
             {users.map((user) => (
               <div key={user.name}>
                 <input
@@ -245,7 +242,7 @@ console.log("templateParams", templateParams);
 
           {/* Selected user */}
           <div className="col-md-3">
-            <h2 className="text-center mb-4">Selected User</h2>
+            <h2 className="text-center mb-4">Selected User List</h2>
             {users.map((user) => (
               <p key={user.name}>
                 {user.name} {winners.includes(user.name) && "(Already Won)"}
