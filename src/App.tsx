@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import './Styles/Main.css'; 
+import './Styles/Main.css';
 import emailjs from 'emailjs-com';
 
 interface User {
   name: string;
   email: string;
   message: string;
-  selected?: string; // Added selected field to store who the user selected
-  hasSpun?: boolean; // Added hasSpun field to track if the user has spun
+  selected?: string; // The person selected by this user
+  hasSpun?: boolean; // Track if the user has spun
 }
 
 const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [winners, setWinners] = useState<string[]>([]); // Track winner names here
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -20,19 +21,17 @@ const App: React.FC = () => {
   const [rotationAngle, setRotationAngle] = useState(0);
   const [spinner, setSpinner] = useState<string | null>(null); // The person who is spinning
   const [selectedUser, setSelectedUser] = useState<string | null>(null); // The selected person
-  const [gameOver, setGameOver] = useState(false);
 
   // Initialize EmailJS with your user ID
   emailjs.init(process.env.REACT_APP_EMAILJS_USER_ID!);
 
-  const sendEmail = (user: User, selectedName: string) => {
+  const sendEmail = (spinnerUser: User, selectedName: string) => {
+    const selectedUser = users.find(user => user.name === selectedName);
     const templateParams = {
-      to_name: user.name,
-      to_email: user.email,
-      message: `Congratulations ${user.name}! You have been selected as the Secret Santa for ${selectedName}! They have provided the following gift ideas: ${user.message}`,
+      to_name: spinnerUser.name, // Send the email to the spinner
+      to_email: spinnerUser.email, // Send to the spinner's email
+      message: `Congratulations ${spinnerUser.name}! You have been selected as the Secret Santa for ${selectedName}. The selected user has provided the following gift ideas: ${selectedUser?.message}`,
     };
-    console.log('user name:', user.name);
-    console.log('user email:', user.email);
 
     emailjs
       .send(
@@ -48,7 +47,6 @@ const App: React.FC = () => {
       });
   };
 
-  // Add user to the list
   const handleSubmit = () => {
     if (name && email && message) {
       setUsers([...users, { name, email, message }]);
@@ -58,53 +56,71 @@ const App: React.FC = () => {
     }
   };
 
-  // Select a spinner
   const handleSpinnerSelection = (userName: string) => {
-    setSpinner(userName);
+    setSpinner(userName); // Set the selected user as the spinner
   };
 
-  // Handle spin logic
- // Handle spin logic
-const handleSpin = () => {
-  if (!spinner) return; // No spinner selected
-  const spinnerUser = users.find(user => user.name === spinner);
-  if (!spinnerUser || spinnerUser.hasSpun) return; // Check if the spinner has already spun
+  const handleSpin = () => {
+    if (!spinner) return; // No spinner selected
+    const spinnerUser = users.find(user => user.name === spinner);
+    if (!spinnerUser || spinnerUser.hasSpun) return; // Check if the spinner has already spun
 
-  setSpinning(true);
+    setSpinning(true);
 
-  // Filter out the spinner (they can't pick themselves)
-  const otherUsers = users.filter(user => user.name !== spinner);
-  if (otherUsers.length === 0) return;
+    // Filter out users who have already been selected, are the spinner, or are in the winners list
+    const remainingUsers = users.filter(
+      user => !user.selected && user.name !== spinner && !winners.includes(user.name)
+    );
 
-  // Randomly select someone else
-  const randomUser = otherUsers[Math.floor(Math.random() * otherUsers.length)];
-  setSelectedUser(randomUser.name);
+    if (remainingUsers.length === 0) {
+      return; // If no users are left to select, we do nothing
+    }
 
-  // Rotate the wheel
-  const randomRotation = Math.floor(Math.random() * 360) + 3600; // Full rotations
-  setRotationAngle(rotationAngle + randomRotation);
+    // Randomly select someone else from remaining users
+    const randomUser = remainingUsers[Math.floor(Math.random() * remainingUsers.length)];
+    setSelectedUser(randomUser.name); // Show selected user
+    console.log(`${spinner} has selected ${randomUser.name}`);
+    // Rotate the wheel (visual effect)
+    const randomRotation = Math.floor(Math.random() * 360) + 3600; // Full rotations
+    setRotationAngle(rotationAngle + randomRotation);
 
-  setTimeout(() => {
-    setSpinning(false);
-    setUsers(users.map(user =>
-      user.name === spinner ? { ...user, selected: randomUser.name, hasSpun: true } : user
-    ));
-  }, 5000); // Simulate the spinning duration
-};
-  // Confirm the selection and remove the person from the list
+    setTimeout(() => {
+      setSpinning(false);
+      // After the spin, mark the spinner as having spun
+      setUsers(users.map(user =>
+        user.name === spinner
+          ? { ...user, hasSpun: true } // Mark the spinner as having spun
+          : user
+      ));
+    }, 5000); // Simulate the spinning duration
+  };
+
   const handleConfirm = () => {
-    if (selectedUser) {
+    if (selectedUser && spinner) {
+      const spinnerUser = users.find(user => user.name === spinner);
       const selected = users.find(user => user.name === selectedUser);
-      if (selected) {
-        sendEmail(selected, spinner!); // Send email to the selected person
-        setUsers(users.filter(user => user.name !== spinner)); // Remove the spinner from the list
+
+      if (spinnerUser && selected) {
+        // Send email to the spinner
+        sendEmail(spinnerUser, selected.name);
+
+        // Add the selected user to the winners list
+        setWinners([...winners, selected.name]);
+
+        // Mark the selected user as having selected someone
+        setUsers(users.map(user =>
+          user.name === spinner
+            ? { ...user, selected: selected.name } // Mark the spinner as having selected someone
+            : user
+        ));
+
+        // Reset spinner and selected user
         setSpinner(null);
         setSelectedUser(null);
       }
     }
   };
 
-  // Send a master email with all the selections once the game is over
   const handleMasterEmail = () => {
     const selections = users.map(user => ({
       name: user.name,
@@ -122,35 +138,36 @@ const handleSpin = () => {
       process.env.REACT_APP_EMAILJS_TEMPLATE_ID!,
       templateParams
     )
-    .then((response) => {
-      console.log('Master email sent successfully!', response.status, response.text);
-    })
-    .catch((error) => {
-      console.error('Failed to send master email.', error);
-    });
+      .then((response) => {
+        console.log('Master email sent successfully!', response.status, response.text);
+      })
+      .catch((error) => {
+        console.error('Failed to send master email.', error);
+      });
   };
 
-  // Check if the game is over (i.e., all users have selected someone)
+  // Log the current state of users whenever it changes
+  useEffect(() => {
+    // console.log("Updated Users:", users);
+    // console.log("Current Winners:", winners); // Log winners
+  }, [users, winners]); // This will log whenever users or winners state changes
+
   const isGameOver = () => users.every(user => user.selected);
-
-  console.log('users:', users);
-  console.log('spinner:', spinner);
-  console.log('selectedUser:', selectedUser);
-
 
   return (
     <div className="form-container">
-        <div className="video-background">
+      <div className="video-background">
         <video autoPlay loop muted>
           <source src="/santa_list.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
       </div>
+
       <h1 className="mb-4 text-center">Secret Santa Game</h1>
       <div className="container mt-5">
         <div className="row">
           {/* Form for adding users */}
-          <div className="col-md-4">
+          <div className="col-md-3">
             <h3 className="text-center mb-4">Add User</h3>
             <div className="mb-3">
               <label htmlFor="name" className="form-label">Name</label>
@@ -187,8 +204,8 @@ const handleSpin = () => {
           </div>
 
           {/* Spinner selection */}
-          <div className="col-md-4">
-            <h2 className="text-center mb-4">Select Spinner</h2>
+          <div className="col-md-3">
+            <h3 className="text-center mb-4">Select Spinner</h3>
             {users.map((user) => (
               <div key={user.name}>
                 <input
@@ -205,42 +222,55 @@ const handleSpin = () => {
             ))}
           </div>
 
-          {/* Spin the wheel */}
-          <div className="col-md-4">
-            <h3 className="text-center mb-4">{spinning ? 'Spinning...' : 'Spin the Wheel!'}</h3>
+          {/* Spinner's turn */}
+          <div className="col-md-3">
+            <h3 className="text-center mb-4">Spin</h3>
             <div
-              className="spinner-container mx-auto"
+              className="spinner-container"
               style={{
                 transform: `rotate(${rotationAngle}deg)`,
-                transition: 'transform 5s ease-out',
+                transition: spinning ? 'transform 5s ease-out' : 'none',
               }}
             >
-              {/* Add wheel graphics and user names here */}
+              <div className="spinner"></div>
             </div>
-            <div className="mt-3">
-              <button className="btn btn-danger" onClick={handleSpin} disabled={spinning || !spinner || users.find(user => user.name === spinner)?.hasSpun}>
-                Spin the Wheel
-              </button>
-            </div>
-            {selectedUser && (
-              <div className="mt-3">
-                <h5>Selected: {selectedUser}</h5>
-                <button className="btn btn-success" onClick={handleConfirm}>
-                  Confirm Selection
-                </button>
-              </div>
-            )}
-            {isGameOver() && !gameOver && (
-              <div className="mt-3">
-                <button className="btn btn-warning" onClick={handleMasterEmail}>
-                  Send Master Email
-                </button>
-              </div>
-            )}
+            <button type="button" className="btn btn-primary mt-3" onClick={handleSpin} disabled={!spinner || spinning}>
+              Spin
+            </button>
+          </div>
+
+          {/* Selected user */}
+          <div className="col-md-3">
+            <h2 className="text-center mb-4">Selected User</h2>
+            {users.map((user) => (
+              <p key={user.name}>
+                {user.name} {winners.includes(user.name) && "(Already Won)"}
+              </p>
+            ))}
+            {selectedUser && <p><strong>Currently Selected:</strong> {selectedUser}</p>}
           </div>
         </div>
       </div>
+
+      {/* Show Final Button */}
+      {users.every(user => user.hasSpun) && (
+        <div className="mt-3">
+          <button type="button" className="btn btn-success" onClick={handleMasterEmail}>
+            Send Final Selections Email
+          </button>
+        </div>
+      )}
+
+      {/* Confirm Selection */}
+      {selectedUser && (
+        <div className="mt-3">
+          <button type="button" className="btn btn-success" onClick={handleConfirm}>
+            Confirm
+          </button>
+        </div>
+      )}
     </div>
   );
 };
+
 export default App;
