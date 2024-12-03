@@ -1,46 +1,45 @@
-# Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+  # Title
+  <h1> Secret Santa </h1>
+   
 
-## Available Scripts
+  ## Table of Contents
 
-In the project directory, you can run:
+  - [Description](#description)
+  - [Design](#design)
+  - [Install](#install)
+  - [Contributor](#contributor)
+  - [License](#license)
+  - [Questions](#questions)
 
-### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+  ## Description
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+   A user will open the page and be presented with a form to add users.  They will add a name, email and gift idea suggested by person entering information. Once all user names are entered you will click the button next to list of users and then click Spin. This will randomly selecte a name from the list. You click Confirm and then an email will be sent to you with the person you selected along with their gift ideas. When all users have taken a turn then you are presented with a Send master list email button, once clicked you are prompted for an admin email, this will send the complete list to that email for reference. 
 
-### `npm test`
+  ## Design
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+    To help randomly choose who you are a Secret Santa for. 
+![alt text](public/main_screen.png)
+![alt text](public/add_user.png) ![alt text](public/select_user.png)
+![alt text](public/confirm.png)
 
-### `npm run build`
+  ## Install
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+    npm start run
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+  ## Contributor
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+    mvoidets, google searched, chatGPT
 
-### `npm run eject`
+  ## License
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+    This is not licensed  
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+  ### Questions
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+  If you have any questions, please contact me at: [mvoidets@yahoo.com] (mailto:mvoidets@yahoo.com). 
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+  My GitHub profile is [mvoidets](https://github.com/mvoidets/giftslayer).
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+  Thank you for visiting my repository!
