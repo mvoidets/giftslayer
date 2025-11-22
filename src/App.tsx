@@ -245,7 +245,7 @@ const App: React.FC = () => {
             <h2 className="text-center mb-4">Selected User List</h2>
             {users.map((user) => (
               <p key={user.name}>
-                {user.name} {winners.includes(user.name) && "(Already Won)"}
+                {user.name} {winners.includes(user.name) && "(Already picked)"}
               </p>
             ))}
             {selectedUser && <p><strong>Currently Selected:</strong> {selectedUser}</p>}
