@@ -217,7 +217,7 @@ const App: React.FC = () => {
                   onChange={() => handleSpinnerSelection(user.name)}
                 />
                 <label htmlFor={user.name}>
-                  {user.name} {user.hasSpun && "(Already Spun)"}
+                  {user.name} {user.hasSpun && "(Already picked)"}
                 </label>
               </div>
             ))}
