@@ -195,7 +195,7 @@ const handleGenerateAll = () => {
   return (
     <div className="container mt-5">
       <div className="video-background">
-        <video autoPlay loop muted>
+        <video autoPlay loop muted playsInline>
           <source src="/santa_list.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
