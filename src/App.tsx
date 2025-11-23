@@ -1,294 +1,272 @@
-import React, { useState, useEffect } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import './Styles/Main.css';
-import emailjs from 'emailjs-com';
-import { match } from 'assert';
+import React, { useState, useEffect } from "react";
+import emailjs from "emailjs-com";
+import "./Styles/Main.css";
 
 interface User {
   name: string;
   email: string;
   message: string;
-  selected?: string; // The person selected by this user
-  hasSpun?: boolean; // Track if the user has spun
+  selected?: string;  // Who they got assigned
+}
+
+interface Match {
+  giver: string;
+  receiver: string;
 }
 
 const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [winners, setWinners] = useState<string[]>([]); // Track winner names here
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
-  const [spinning, setSpinning] = useState(false);
-  const [rotationAngle, setRotationAngle] = useState(0);
-  const [spinner, setSpinner] = useState<string | null>(null); // The person who is spinning
-  const [selectedUser, setSelectedUser] = useState<string | null>(null); // The selected person
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
 
-  // Initialize EmailJS with your user ID
+  // Initialize EmailJS
   useEffect(() => {
     emailjs.init(process.env.REACT_APP_EMAILJS_USER_ID!);
   }, []);
 
-  const sendEmail = (spinnerUser: User, selectedName: string) => {
-    const selectedUser = users.find(user => user.name === selectedName);
-    const templateParams = {
-      to_name: spinnerUser.name, // Send the email to the spinner
-      to_email: spinnerUser.email, // Send to the spinner's email
-      message: `Congratulations ${spinnerUser.name}! You have been selected as the Secret Santa for ${selectedName}. The selected user has provided the following gift ideas: ${selectedUser?.message}`,
+  // ------------------------------
+  // Add a new user
+  // ------------------------------
+  const handleAddUser = () => {
+    if (!name || !email || !message) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    setUsers([...users, { name, email, message }]);
+    setName("");
+    setEmail("");
+    setMessage("");
+  };
+
+  // ------------------------------
+  // Generate ALL Secret Santa matches at once
+  // ------------------------------
+
+const handleGenerateAll = () => {
+  if (users.length < 2) {
+    alert("Need at least 2 users");
+    return;
+  }
+
+  const givers = users.map((u) => u.name);
+  let receivers = [...givers];
+
+  // Shuffle receivers
+  receivers = receivers.sort(() => Math.random() - 0.5);
+
+  // Fix self-matches
+  for (let i = 0; i < givers.length; i++) {
+    if (givers[i] === receivers[i]) {
+      const swapIndex = i === 0 ? 1 : i - 1;
+      [receivers[i], receivers[swapIndex]] = [
+        receivers[swapIndex],
+        receivers[i],
+      ];
+    }
+  }
+
+  // Build matches internally
+  const fullMatches: Match[] = givers.map((giver, i) => ({
+    giver,
+    receiver: receivers[i],
+  }));
+
+  // ------------------------
+  // Save to localStorage with new key names
+  // ------------------------
+  const storageMatches = fullMatches.map(m => ({
+    SecretSanta: m.giver,
+    giftee: m.receiver
+  }));
+
+  localStorage.setItem("matchSelected", JSON.stringify(storageMatches));
+
+  // ------------------------
+  // Update users state
+  // ------------------------
+  const updatedUsers = users.map((u) => ({
+    ...u,
+    selected: fullMatches.find((m) => m.giver === u.name)?.receiver || "",
+  }));
+  setUsers(updatedUsers);
+
+  // ------------------------
+  // Auto-send emails to each giver
+  // ------------------------
+  fullMatches.forEach((match) => {
+    handleSendEmail(match.giver);
+  });
+
+  alert("All Secret Santa assignments generated and emailed!");
+};
+
+  // ------------------------------
+  // Send an email to a single participant
+  // ------------------------------
+  const handleSendEmail = (giverName: string) => {
+    const giver = users.find((u) => u.name === giverName);
+    if (!giver || !giver.selected) return;
+
+    const receiver = users.find((u) => u.name === giver.selected);
+
+    const params = {
+      to_name: giver.name,
+      to_email: giver.email,
+      message: `Hi ${giver.name}! You are Secret Santa for ${receiver?.name}. Their gift ideas: ${receiver?.message}`,
     };
 
     emailjs
       .send(
         process.env.REACT_APP_EMAILJS_SERVICE_ID!,
         process.env.REACT_APP_EMAILJS_TEMPLATE_ID!,
-        templateParams
+        params
       )
-      .then((response) => {
-        console.log('Email sent successfully!', response.status, response.text);
-      })
-      .catch((error) => {
-        console.error('Failed to send email.', error);
-      });
-  };
-  const handleSubmit = () => {
-    if (name && email && message) {
-      setUsers([...users, { name, email, message }]);
-      setName('');
-      setEmail('');
-      setMessage('');
-    }
+      .then(() => alert(`${giver.name}'s email sent!`))
+      .catch(() => alert("Email failed"));
   };
 
-  const handleSpinnerSelection = (userName: string) => {
-    setSpinner(userName); // Set the selected user as the spinner
-  };
-
-  const handleSpin = () => {
-    if (!spinner) return; // No spinner selected
-    const spinnerUser = users.find(user => user.name === spinner);
-    if (!spinnerUser || spinnerUser.hasSpun) return; // Check if the spinner has already spun
-
-    setSpinning(true);
-
-    // Filter out users who have already been selected, are the spinner, or are in the winners list
-    const remainingUsers = users.filter(
-      user => !user.selected && user.name !== spinner && !winners.includes(user.name)
-    );
-
-    if (remainingUsers.length === 0) {
-      return; // If no users are left to select, we do nothing
-    }
-
-    // Randomly select someone else from remaining users
-    const randomUser = remainingUsers[Math.floor(Math.random() * remainingUsers.length)];
-    setSelectedUser(randomUser.name); // Show selected user
-    console.log(`${spinner} has selected ${randomUser.name}`);
-    //write to local storage for master list
-   
-    // Load existing stored matches (or empty)
-    const storedMatches = JSON.parse(localStorage.getItem("matchSelected") || "[]");
-
-    // Add new pairing
-    storedMatches.push({
-      giver: spinner,
-      receiver: randomUser.name,
-      timestamp: new Date().toISOString()
-    });
-
-    // Save back to localStorage
-    localStorage.setItem("matchSelected", JSON.stringify(storedMatches));
-
-
-    // Rotate the wheel (visual effect)
-    const randomRotation = Math.floor(Math.random() * 360) + 3600; // Full rotations
-    setRotationAngle(rotationAngle + randomRotation);
-
-    setTimeout(() => {
-      setSpinning(false);
-      // After the spin, mark the spinner as having spun
-      setUsers(users.map(user =>
-        user.name === spinner
-          ? { ...user, hasSpun: true } // Mark the spinner as having spun
-          : user
-      ));
-    }, 5000); // Simulate the spinning duration
-  };
-
-  const handleConfirm = () => {
-    if (selectedUser && spinner) {
-      const spinnerUser = users.find(user => user.name === spinner);
-      const selected = users.find(user => user.name === selectedUser);
-
-      if (spinnerUser && selected) {
-        // Send email to the spinner
-        sendEmail(spinnerUser, selected.name);
-
-        // Add the selected user to the winners list
-        setWinners([...winners, selected.name]);
-
-        // Mark the selected user as having selected someone
-        setUsers(users.map(user =>
-          user.name === spinner
-            ? { ...user, selected: selected.name } // Mark the spinner as having selected someone
-            : user
-        ));
-
-        // Reset spinner and selected user
-        setSpinner(null);
-        setSelectedUser(null);
-      }
-    }
-  };
-
+  // ------------------------------
+  // Admin Master Email
+  // ------------------------------
   const handleMasterEmail = () => {
-    // const selections = users.map(user => ({
-    //   name: user.name,
-    //   selected: user.selected,
-    const selections = JSON.parse(localStorage.getItem("matchSelected") || "[]");
+    const matches = JSON.parse(
+      localStorage.getItem("matchSelected") || "[]"
+    ) as Match[];
 
-   // }));
-    const adminEmail = prompt("Please enter the admin's email:");
-    const templateParams = {
-      to_name: 'Admin', // Or some other name
-      to_email: adminEmail || '', // Admin's email
-      message: JSON.stringify(selections, null, 2), // Format the selections in the email
+    if (matches.length === 0) {
+      alert("No matches found");
+      return;
+    }
+
+    const adminEmail = prompt("Admin Email:");
+    if (!adminEmail) return;
+
+    const params = {
+      to_name: "Admin",
+      to_email: adminEmail,
+      message: JSON.stringify(matches, null, 2),
     };
 
-    emailjs.send(
-      process.env.REACT_APP_EMAILJS_SERVICE_ID!,
-      process.env.REACT_APP_EMAILJS_TEMPLATE_ID!,
-      templateParams
-    )
-      .then((response) => {
-        console.log('Master email sent successfully!', response.status, response.text);
-      })
-      .catch((error) => {
-        console.error('Failed to send master email.', error);
-      });
+    emailjs
+      .send(
+        process.env.REACT_APP_EMAILJS_SERVICE_ID!,
+        process.env.REACT_APP_EMAILJS_TEMPLATE_ID!,
+        params
+      )
+      .then(() => alert("Master list sent!"))
+      .catch(() => alert("Failed to send master email"));
   };
 
-  // Log the current state of users whenever it changes
-  useEffect(() => {
-    // console.log("Updated Users:", users);
-    // console.log("Current Winners:", winners); // Log winners
-  }, [users, winners]); // This will log whenever users or winners state changes
+  // ------------------------------
+  // View stored master list
+  // ------------------------------
+  const handleViewMasterList = () => {
+   const matches = JSON.parse(
+    localStorage.getItem("matchSelected") || "[]"
+  ) as { SecretSanta: string; giftee: string }[];
 
-  const isGameOver = () => users.every(user => user.selected);
+  if (matches.length === 0) {
+    alert("No matches stored yet");
+    return;
+  }
 
+    const output = matches
+      .map((m) => `${m.SecretSanta} → ${m.giftee}`)
+      .join("\n");
+
+    alert("Secret Santa Master List:\n\n" + output);
+  };
+
+  // ------------------------------
+  // Reset everything
+  // ------------------------------
+  const handleReset = () => {
+    if (window.confirm("Clear everything?")) {
+      localStorage.removeItem("matchSelected");
+      setUsers([]);
+    }
+  };
+
+  // ------------------------------
+  // UI Rendering
+  // ------------------------------
   return (
-    <div className="form-container">
+    <div className="container mt-5">
       <div className="video-background">
         <video autoPlay loop muted>
           <source src="/santa_list.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
       </div>
+      <h1 className="text-center mb-4 w-50 text-white">Secret Santa Generator</h1>
 
-      <h1 className="mb-4 text-center">Secret Santa Game</h1>
-      <div className="container mt-5">
-        <div className="row">
-          {/* Form for adding users */}
-          <div className="col-md-3">
-            <h3 className="text-center mb-4">Add User</h3>
-            <div className="mb-3">
-              <label htmlFor="name" className="form-label">Name</label>
-              <input
-                type="text"
-                className="form-control"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="email" className="form-label">Email</label>
-              <input
-                type="email"
-                className="form-control"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="message" className="form-label">Gift Ideas</label>
-              <textarea
-                className="form-control"
-                id="message"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-            </div>
-            <button type="button" className="btn btn-primary" onClick={handleSubmit}>
-              Add User
-            </button>
-          </div>
-
-          {/* Spinner selection */}
-          <div className="col-md-3">
-            <h3 className="text-center mb-4">Select who is the spinner</h3>
-            {users.map((user) => (
-              <div key={user.name}>
-                <input
-                  type="radio"
-                  id={user.name}
-                  name="spinner"
-                  checked={spinner === user.name}
-                  onChange={() => handleSpinnerSelection(user.name)}
-                />
-                <label htmlFor={user.name}>
-                  {user.name} {user.hasSpun && "(Already picked)"}
-                </label>
-              </div>
-            ))}
-          </div>
-
-          {/* Spinner's turn */}
-          <div className="col-md-3">
-            <h3 className="text-center mb-4">Spin</h3>
-            <div
-              className="spinner-container"
-              style={{
-                transform: `rotate(${rotationAngle}deg)`,
-                transition: spinning ? 'transform 5s ease-out' : 'none',
-              }}
-            >
-              <div className="spinner"></div>
-            </div>
-            <button type="button" className="btn btn-primary mt-3" onClick={handleSpin} disabled={!spinner || spinning}>
-              Spin
-            </button>
-          </div>
-
-          {/* Selected user */}
-          <div className="col-md-3">
-            <h2 className="text-center mb-4">Selected User List</h2>
-            {users.map((user) => (
-              <p key={user.name}>
-                {user.name} {winners.includes(user.name) && "(Already picked)"}
-              </p>
-            ))}
-            {selectedUser && <p><strong>Currently Selected:</strong> {selectedUser}</p>}
-          </div>
-        </div>
+      {/* Add User Form */}
+      <div className="card p-3 mb-4 w-50 opacity-75">
+        <h3>Add User</h3>
+        <input
+          className="form-control mb-2"
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="form-control mb-2"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <textarea
+          className="form-control mb-2"
+          placeholder="Gift Ideas"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+        <button className="btn btn-primary" onClick={handleAddUser}>
+          Add User
+        </button>
       </div>
 
-      {/* Show Final Button */}
-      {users.every(user => user.hasSpun) && (
-        <div className="mt-3">
-          <button type="button" className="btn btn-success" onClick={handleMasterEmail}>
-            Send Final Selections Email
-          </button>
-        </div>
-      )}
+      {/* User List */}
+      <div className="card p-3 mb-4 w-50 opacity-75">
+        <h3>Users</h3>
+        {users.length === 0 && <p>No users added</p>}
+        {users.map((u) => (
+          <div key={u.name}>
+            {u.name} – {u.selected ? `Assigned: ${u.selected}` : "Not assigned"}
+          </div>
+        ))}
+      </div>
 
-      {/* Confirm Selection */}
-      {selectedUser && (
-        <div className="mt-3">
-          <button type="button" className="btn btn-success" onClick={handleConfirm}>
-            Confirm
-          </button>
-        </div>
-      )}
+      {/* Action Buttons */}
+      <div className="d-flex flex-column gap-2 w-50">
+        <button className="btn btn-success" onClick={handleGenerateAll}>
+          Generate All Matches
+        </button>
+
+        <button className="btn btn-info" onClick={handleViewMasterList}>
+          View Master List
+        </button>
+
+        <button className="btn btn-warning" onClick={handleMasterEmail}>
+          Email Master List to Admin
+        </button>
+
+        {/* <button
+          className="btn btn-secondary"
+          onClick={() => {
+            const giver = prompt("Whose email do you want to send?");
+            if (giver) handleSendEmail(giver);
+          }}
+        >
+          Send Individual Email
+        </button> */}
+
+        <button className="btn btn-danger" onClick={handleReset}>
+          Reset All
+        </button>
+      </div>
     </div>
   );
 };

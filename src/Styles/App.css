@@ -75,3 +75,7 @@
   border: 5px solid black;
   overflow: hidden;
 }
+
+.btn {
+  width: 100px;
+}
