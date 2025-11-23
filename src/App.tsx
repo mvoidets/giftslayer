@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Styles/Main.css';
 import emailjs from 'emailjs-com';
+import { match } from 'assert';
 
 interface User {
   name: string;
@@ -81,6 +82,22 @@ const App: React.FC = () => {
     const randomUser = remainingUsers[Math.floor(Math.random() * remainingUsers.length)];
     setSelectedUser(randomUser.name); // Show selected user
     console.log(`${spinner} has selected ${randomUser.name}`);
+    //write to local storage for master list
+   
+    // Load existing stored matches (or empty)
+    const storedMatches = JSON.parse(localStorage.getItem("matchSelected") || "[]");
+
+    // Add new pairing
+    storedMatches.push({
+      giver: spinner,
+      receiver: randomUser.name,
+      timestamp: new Date().toISOString()
+    });
+
+    // Save back to localStorage
+    localStorage.setItem("matchSelected", JSON.stringify(storedMatches));
+
+
     // Rotate the wheel (visual effect)
     const randomRotation = Math.floor(Math.random() * 360) + 3600; // Full rotations
     setRotationAngle(rotationAngle + randomRotation);
@@ -123,10 +140,12 @@ const App: React.FC = () => {
   };
 
   const handleMasterEmail = () => {
-    const selections = users.map(user => ({
-      name: user.name,
-      selected: user.selected,
-    }));
+    // const selections = users.map(user => ({
+    //   name: user.name,
+    //   selected: user.selected,
+    const selections = JSON.parse(localStorage.getItem("matchSelected") || "[]");
+
+   // }));
     const adminEmail = prompt("Please enter the admin's email:");
     const templateParams = {
       to_name: 'Admin', // Or some other name
